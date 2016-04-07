@@ -1,3 +1,5 @@
+'use strict';
+
 var express = require('express');
 var util = require('util');
 var Node = require('../models/node');
@@ -5,20 +7,25 @@ var router = express.Router();
 var async = require('async');
 var Sandbox = require("sandbox"), s = new Sandbox();
 
-router.get('/sandbox', function (req, res, next) {
-
-  var code = 'var data = {test:1, next: "wow"}; data.test += 1; data.next = "so much wow"; console  .' + "\n" + '  log  (data);';
-
-  code = code.replace(/console\s*\.\s*(log|debug|info|warn|error|assert|dir|dirxml|trace|group|groupEnd|time|timeEnd|profile|profileEnd|count)\s*\((.*)\);?/g, '');
-
-  // s.run(code + "\nconsole.log(data)", function (output) {
-  //   res.send("Sandbox response: " + util.inspect(output.console) + "\n")
-  // })
+router.get('/test', function (req, res, next) {
+  res.send('asd')
 });
 
-router.get('/', function (req, res, next) {
+router.get('/async', function (req, res, next) {
 
-  var data = {amount: 100};
+  let store = {
+    states: [],
+    getStates(){
+      return this.states;
+    },
+    getState() {
+      return this.states[this.states.length - 1];
+    },
+    setState(state){
+      this.states.push(state);
+      return this;
+    }
+  };
 
   var nodeBranch1 = new Node({type: 'code', code: 'data.branch = "first"'});
   var nodeBranch2 = new Node({type: 'code', code: 'data.lunch = "second"'});
@@ -27,39 +34,59 @@ router.get('/', function (req, res, next) {
   var node3 = new Node({type: 'branch', tasks: [nodeBranch1, nodeBranch2]});
   var node4 = new Node({type: 'code', code: 'data.final = "finish"'});
 
-  async.waterfall([
-    // async.apply(executeNode, node1, data),
-    // async.apply(executeNode, node2),
-    async.apply(executeNode, node3, data),
-    // async.apply(executeNode, node4),
-  ], function (err, result) {
-    res.send('wow ' + util.inspect(result))
+  var nodeParallel = new Node({
+    type: 'branch',
+    tasks: [
+      new Node({type: 'code', code: 'data.parallel = "wow"'}),
+      new Node({type: 'code', code: 'data.parallel = "how"'}),
+      new Node({type: 'code', code: 'data.parallel = "now"'}),
+      new Node({type: 'code', code: 'data.parallel = "bow"'}),
+    ]
   });
 
-  function executeNode(node, data, callback) {
+  var chain = new Node({
+    type: 'branch', tasks: [
+      node1,
+      node2,
+      nodeParallel,
+      // nodeParallel,
+      // nodeParallel,
+      // node3,
+      // node4
+    ]
+  });
+
+  executeNode(chain, store.setState({amount: 100}), function (err, result) {
+    res.send('wow ' + util.inspect(result.getState()) + '\n')
+  });
+
+  function executeNode(node, store, callback) {
     switch (node.type) {
 
       case 'code':
         var code = node.code.replace(/console\s*\.\s*(log|debug|info|warn|error|assert|dir|dirxml|trace|group|groupEnd|time|timeEnd|profile|profileEnd|count)\s*\((.*)\);?/g, '');
 
-        s.run('var data = ' + JSON.stringify(data) + ';' + code + "\nconsole.log(data)", function (output) {
-          callback(null, output.console[0]);
+        s.run('var data = ' + JSON.stringify(store.getState()) + ';' + code + "\nconsole.log(data)", function (output) {
+          callback(null, store.setState(output.console[0]));
         });
         break;
 
       case 'branch':
-        var tasks = [async.apply(executeNode, node.tasks[0], data)];
-        if (node.tasks.length > 1) {
-          for (var i = 1; i < node.tasks.length; i++) {
-            tasks.push(async.apply(executeNode, node.tasks[i]))
-          }
-        }
-        //res.send(util.inspect(data));
-        async.waterfall(tasks, function (result) {
-          res.send(util.inspect(result));
-          callback(null, result);
+        async.waterfall(wrapNodeTasks(node.tasks, store), (err, result) => {
+          callback(err, result)
         });
+        break;
     }
+  }
+
+  function wrapNodeTasks(tasks, store) {
+    let wrapped = [async.apply(executeNode, tasks[0], store)];
+    if (tasks.length > 1) {
+      for (var i = 1; i < tasks.length; i++) {
+        wrapped.push(async.apply(executeNode, tasks[i]))
+      }
+    }
+    return wrapped;
   }
 });
 
