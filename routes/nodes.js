@@ -1,15 +1,14 @@
 'use strict';
 
+import {initCRUDRoutes} from './../helpers/CRUD-routes';
+
 var express = require('express');
-var util = require('util');
-var Node = require('../models/node');
 var router = express.Router();
+var Node = require('../models/node');
 var async = require('async');
 var Sandbox = require("sandbox"), s = new Sandbox();
 
-router.get('/test', function (req, res, next) {
-  res.send('asd')
-});
+initCRUDRoutes(Node, router);
 
 router.get('/async', function (req, res, next) {
 
@@ -27,20 +26,20 @@ router.get('/async', function (req, res, next) {
     }
   };
 
-  var nodeBranch1 = new Node({type: 'code', code: 'data.branch = "first"'});
-  var nodeBranch2 = new Node({type: 'code', code: 'data.lunch = "second"'});
-  var node1 = new Node({type: 'code', code: 'data.amount += 10'});
-  var node2 = new Node({type: 'code', code: 'data.amount -= 5'});
+  var nodeBranch1 = new Node({type: 'code', trusted: true, code: 'data.branch = "first"'});
+  var nodeBranch2 = new Node({type: 'code', trusted: true, code: 'data.lunch = "second"'});
+  var node1 = new Node({type: 'code', trusted: true, code: 'data.amount += 10'});
+  var node2 = new Node({type: 'code', trusted: true, code: 'data.amount -= 5'});
   var node3 = new Node({type: 'branch', tasks: [nodeBranch1, nodeBranch2]});
-  var node4 = new Node({type: 'code', code: 'data.final = "finish"'});
+  var node4 = new Node({type: 'code', trusted: true, code: 'data.final = "finish"'});
 
   var nodeParallel = new Node({
     type: 'branch',
     tasks: [
-      new Node({type: 'code', code: 'data.parallel = "wow"'}),
-      new Node({type: 'code', code: 'data.parallel = "how"'}),
-      new Node({type: 'code', code: 'data.parallel = "now"'}),
-      new Node({type: 'code', code: 'data.parallel = "bow"'}),
+      new Node({type: 'code', trusted: true, code: 'data.parallel = "wow"'}),
+      new Node({type: 'code', trusted: true, code: 'data.parallel = "how"'}),
+      new Node({type: 'code', trusted: true, code: 'data.parallel = "now"'}),
+      new Node({type: 'code', trusted: true, code: 'data.parallel = "bow"'})
     ]
   });
 
@@ -49,26 +48,27 @@ router.get('/async', function (req, res, next) {
       node1,
       node2,
       nodeParallel,
-      // nodeParallel,
-      // nodeParallel,
-      // node3,
-      // node4
+      nodeParallel,
+      nodeParallel,
+      node3,
+      node4
     ]
   });
 
   executeNode(chain, store.setState({amount: 100}), function (err, result) {
-    res.send('wow ' + util.inspect(result.getState()) + '\n')
+    res.sendJson(result.getState())
   });
 
   function executeNode(node, store, callback) {
     switch (node.type) {
 
       case 'code':
-        var code = node.code.replace(/console\s*\.\s*(log|debug|info|warn|error|assert|dir|dirxml|trace|group|groupEnd|time|timeEnd|profile|profileEnd|count)\s*\((.*)\);?/g, '');
+        let func = node.trusted ? runNativeCode : runCodeInSandbox;
 
-        s.run('var data = ' + JSON.stringify(store.getState()) + ';' + code + "\nconsole.log(data)", function (output) {
-          callback(null, store.setState(output.console[0]));
+        func(node.code, store.getState(), function (err, data) {
+          callback(err, store.setState(data));
         });
+
         break;
 
       case 'branch':
@@ -79,6 +79,11 @@ router.get('/async', function (req, res, next) {
     }
   }
 
+  function runNativeCode(code, data, callback) {
+    eval(code);
+    callback(null, data);
+  }
+
   function wrapNodeTasks(tasks, store) {
     let wrapped = [async.apply(executeNode, tasks[0], store)];
     if (tasks.length > 1) {
@@ -87,6 +92,19 @@ router.get('/async', function (req, res, next) {
       }
     }
     return wrapped;
+  }
+
+  function runCodeInSandbox(code, data, callback) {
+    s.run(prepareCodeForSandbox(code, data), function (output) {
+      callback(null, (output.console[0]));
+    });
+  }
+
+  function prepareCodeForSandbox(code, data) {
+    return 'var data = ' +
+      JSON.stringify(store.getState()) + ';' +
+      code.replace(/console\s*\.\s*(log|debug|info|warn|error|assert|dir|dirxml|trace|group|groupEnd|time|timeEnd|profile|profileEnd|count)\s*\((.*)\);?/g, '')
+      + "\nconsole.log(data)"
   }
 });
 

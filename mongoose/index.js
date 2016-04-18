@@ -1,2 +1,2 @@
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/rest');
+mongoose.connect('mongodb://localhost/angoinor_test');

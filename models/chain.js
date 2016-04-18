@@ -1,12 +1,11 @@
-'use strict';
-
 var mongoose = require('mongoose');
 var Schema = mongoose.Schema;
+var Node = require('../models/node');
 
-var chainSchema = new Schema({
+var Chain = new Schema({
   title: {type: String, min: 2, max: 128},
   description: {type: String, min: 2, max: 512},
-  links: [{}]
+  links: [Node]
 });
 
-module.exports = mongoose.model('Chain', chainSchema);
+module.exports = mongoose.model('Chain', Chain);
