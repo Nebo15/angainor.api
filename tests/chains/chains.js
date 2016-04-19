@@ -1,6 +1,7 @@
 var should = require('should');
 var request = require('supertest');
-var helper = require("./../helper").helper;
+
+import helper from "./../helper";
 
 describe('Chains', () => {
 
@@ -13,13 +14,17 @@ describe('Chains', () => {
         invalid: 'invalid field'
       };
 
-      // request(helper.baseUrl)
-      //   .put('/nodes/' + data._id)
-      //   .send(data)
-      //   .end((err, res) => {
-      //     helper.assertChain(res, 200, data);
-      //     done();
-      //   });
+      request(helper.baseUrl)
+        .put('/chains/' + data._id)
+        .send(data)
+        .end((err, res) => {
+          // helper.assertChain(res, 200, {
+          //   title: 'Updated chain title',
+          //   description: 'Updated chain description'
+          // });
+          // res.body.data.should.not.have.property('invalid');
+          done();
+        });
     });
   });
   /*
