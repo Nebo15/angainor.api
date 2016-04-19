@@ -8,16 +8,16 @@ export let initCRUDRoutes = (model, router) => {
   });
 
   router.get('/:id', (req, res, next) => {
-    Repository.readModel(model, req.body.id, (err, response) => {
+    Repository.readModel(model, req.params.id, (err, response) => {
       response ?
-      res.sendJson(response) :
-      res.sendJsonError(404, 'Not found');
+        res.sendJson(response) :
+        res.sendJsonError(404, 'Not found');
     });
   });
 
   router.post('/', (req, res, next) => {
     Repository.createModel(model, req.body, (err, response) => {
-      res.sendJson(response, 201)
+      err ? res.sendJsonError(422, err.message, err) : res.sendJson(response, 201);
     })
   });
 

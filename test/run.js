@@ -10,4 +10,5 @@ describe("Execute tests", (done) => {
     })
   });
   require('./nodes/nodes.js');
+  require('./chains/chains.js');
 });

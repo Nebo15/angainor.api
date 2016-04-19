@@ -9,8 +9,8 @@ var bodyParser = require('body-parser');
 var db = require('./mongoose');
 
 var routes = require('./routes/index');
-var users = require('./routes/users');
 var nodes = require('./routes/nodes');
+var chains = require('./routes/chains');
 
 var app = express();
 
@@ -29,8 +29,8 @@ app.use(bodyParser.urlencoded({extended: false}));
 // app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
-app.use('/users', users);
 app.use('/nodes', nodes);
+app.use('/chains', chains);
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
