@@ -27,9 +27,9 @@ describe('Chains', () => {
         });
     });
   });
-  /*
+
   it('Delete Chain', done => {
-    helper.createNode((res) => {
+    helper.createChain((res) => {
 
       var id = res.body.data._id;
       request(helper.baseUrl)
@@ -49,14 +49,13 @@ describe('Chains', () => {
 
   it('Respond with list of Chains', done => {
     request(helper.baseUrl)
-      .get('/nodes')
+      .get('/chains')
       .end((err, res) => {
         if (err) {
           throw err;
         }
-        helper.assertNodesList(res);
+        helper.assertChainsList(res);
         done()
       })
   });
-  */
 });
