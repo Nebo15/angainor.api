@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "start": "nodemon  --exec babel-node --presets=es2015 -- ./bin/www",
-    "test": "./node_modules/.bin/mocha --require babel-core/register tests/**"
+    "test": "./node_modules/.bin/mocha --require babel-core/register tests/run.js"
   },
   "dependencies": {
     "async": "^1.5.2",

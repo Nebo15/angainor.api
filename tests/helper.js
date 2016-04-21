@@ -1,8 +1,16 @@
 var request = require('supertest');
 
-export default {
-  baseUrl: 'http://localhost:3333',
-  getNodeData: () => {
+export default class Helper {
+
+  constructor() {
+    this.baseUrl = 'http://localhost:3333'
+  }
+
+  /*
+   * node functions
+   */
+
+  getNodeData() {
     return {
       title: 'Test title node',
       description: 'Test desc node',
@@ -10,8 +18,46 @@ export default {
       trusted: true,
       code: '<?php die("hacked"); ?>'
     }
-  },
-  getChainData: () => {
+  }
+
+  createNode(data, callback) {
+    if (typeof data === 'function') {
+      callback = data;
+      data = this.getNodeData();
+    }
+    request(this.baseUrl)
+      .post('/nodes')
+      .send(data)
+      .end((err, res) => {
+        if (err) {
+          throw err;
+        }
+        this.assertNode(res, 201, data);
+        callback(res)
+      });
+  }
+
+  assertNodesList(res) {
+    this.assertResponseFields(res);
+    res.body.data.should.be.instanceof(Array);
+    for (var i = 0; i < res.body.data.length; i++) {
+      res.body.data[i].should.have.properties('_id', 'title', 'description', 'code', 'type');
+    }
+  }
+
+  assertNode(res, code, values) {
+    this.assertResponseFields(res, code);
+    res.body.data.should.have.properties('_id', 'title', 'description', 'code', 'type');
+    if (values !== 'undefined') {
+      res.body.data.should.have.properties(values)
+    }
+  }
+
+  /*
+   * chain functions
+   */
+
+  getChainData() {
     var node1 = {type: "code", trusted: true, code: "data.amount += 10"};
     var node2 = {type: "code", trusted: true, code: "data.amount -= 5"};
     var node3 = {
@@ -42,75 +88,58 @@ export default {
         node4
       ]
     }
-  },
-  createNode: (data, callback) => {
+  }
+
+  createChain(data, callback) {
     if (typeof data === 'function') {
       callback = data;
-      data = this.helper.getNodeData();
+      data = this.getChainData();
     }
-    request(this.helper.baseUrl)
-      .post('/nodes')
-      .send(data)
-      .end((err, res) => {
-        if (err) {
-          throw err;
-        }
-        this.helper.assertNode(res, 201, data);
-        callback(res)
-      });
-  },
-  createChain: (data, callback) => {
-    if (typeof data === 'function') {
-      callback = data;
-      data = this.helper.getChainData();
-    }
-    request(this.helper.baseUrl)
+    request(this.baseUrl)
       .post('/chains')
       .send(data)
       .end((err, res) => {
         if (err) {
           throw err;
         }
-        this.helper.assertChain(res, 201, data);
+        this.assertChain(res, 201, data);
         callback(res)
       });
-  },
-  assertResponseJson: (res) => {
-    res.header.should.have.property('content-type', 'application/json; charset=utf-8');
-    return res;
-  },
-  assertResponseFields: (res, code) => {
-    res.statusCode.should.equal(code || 200);
-    this.helper.assertResponseJson(res)
-      .body.should.have.properties('meta', 'data');
-    res.body.meta.should.have.property('code', code || 200);
-  },
-  assertResponseErrorFields: (res, code) => {
-    res.statusCode.should.equal(code);
-    this.helper.assertResponseJson(res)
-      .body.should.have.properties('meta');
-    res.body.meta.should.have.property('code', code);
-    res.body.meta.should.have.property('error');
-  },
-  assertNodesList: res => {
-    this.helper.assertResponseFields(res);
-    res.body.data.should.be.instanceof(Array);
-    for (var i = 0; i < res.body.data.length; i++) {
-      res.body.data[i].should.have.properties('_id', 'title', 'description', 'code', 'type');
-    }
-  },
-  assertNode: (res, code, values) => {
-    this.helper.assertResponseFields(res, code);
-    res.body.data.should.have.properties('_id', 'title', 'description', 'code', 'type');
-    if (values !== 'undefined') {
-      res.body.data.should.have.properties(values)
-    }
-  },
-  assertChain: (res, code, values) => {
-    this.helper.assertResponseFields(res, code);
+  }
+
+  assertChain(res, code, values) {
+    this.assertResponseFields(res, code);
     res.body.data.should.have.properties('_id', 'title', 'description', 'nodes');
     if (values !== 'undefined') {
       // res.body.data.should.have.properties(values)
     }
   }
-};
+
+  assertChainsList(res){
+    
+  }
+
+  /*
+   * general functions
+   */
+
+  assertResponseFields(res, code) {
+    res.statusCode.should.equal(code || 200);
+    this.assertResponseJson(res)
+      .body.should.have.properties('meta', 'data');
+    res.body.meta.should.have.property('code', code || 200);
+  }
+
+  assertResponseErrorFields(res, code) {
+    res.statusCode.should.equal(code);
+    this.assertResponseJson(res)
+      .body.should.have.properties('meta');
+    res.body.meta.should.have.property('code', code);
+    res.body.meta.should.have.property('error');
+  }
+
+  assertResponseJson(res) {
+    res.header.should.have.property('content-type', 'application/json; charset=utf-8');
+    return res;
+  }
+}
