@@ -49,7 +49,7 @@ router.post('/:id/execute', function (req, res, next) {
         break;
 
       case 'branch':
-        async.waterfall(wrapNodeTasks(node.tasks, store), (err, result) => {
+        async.waterfall(wrapNodeTasks(node.nodes, store), (err, result) => {
           callback(err, result)
         });
         break;
