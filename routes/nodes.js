@@ -1,5 +1,3 @@
-'use strict';
-
 import {initCRUDRoutes} from './../helpers/CRUD-routes';
 
 var express = require('express');
