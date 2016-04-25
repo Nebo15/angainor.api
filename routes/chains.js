@@ -18,7 +18,7 @@ router.post('/:id/execute', function (req, res, next) {
     if (!Chain) {
       res.sendJsonError(404, 'Chain not found')
     } else {
-      initNode(Chain, (Node, Store) => {
+      initChain(Chain, (Node, Store) => {
         async.waterfall(
           wrapNodes(Node.nodes, Store), (err, result) => res.sendJson(result.getState().output)
         )
@@ -49,35 +49,35 @@ router.post('/:id/execute', function (req, res, next) {
     }
   }
 
-  let initNode = (Chain, cb) => {
+  let initChain = (Chain, cb) => {
     let Node = new NodeModel({type: "branch", title: "Init branch", nodes: Chain.nodes});
     let Store = new StoreModel({chainId: Chain._id});
     Store.states.push(Store.prepareState(Node, req.body));
     cb(Node, Store);
   };
 
-  function handleError(err) {
+  let handleError = err => {
     res.sendJsonError(422, err.message, err);
-  }
+  };
 
-  function runNativeCode(code, data, callback) {
+  let runNativeCode = (code, data, callback) => {
     eval(code);
     callback(null, data, code);
-  }
+  };
 
-  function runCodeInSandbox(code, data, callback) {
+  let runCodeInSandbox = (code, data, callback) => {
     code = prepareCodeForSandbox(code, data);
     s.run(code, output => callback(null, (output.console[0]), code));
-  }
+  };
 
-  function prepareCodeForSandbox(code, data) {
+  let prepareCodeForSandbox = (code, data) => {
     return 'var data = ' +
       JSON.stringify(data) + ';' +
       code.replace(/console\s*\.\s*(log|debug|info|warn|error|assert|dir|dirxml|trace|group|groupEnd|time|timeEnd|profile|profileEnd|count)\s*\((.*)\);?/g, '')
       + "\nconsole.log(data)"
-  }
+  };
 
-  function wrapNodes(tasks, Store) {
+  let wrapNodes = (tasks, Store) => {
     let wrapped = [async.apply(executeNode, tasks[0], Store)];
     if (tasks.length > 1) {
       for (var i = 1; i < tasks.length; i++) {
