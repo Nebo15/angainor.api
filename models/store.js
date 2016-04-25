@@ -10,13 +10,12 @@ var storeSchema = new Schema({
       type: {type: String},
       code: Schema.Types.Mixed
     },
-    input: Schema.Types.Mixed,
     output: Schema.Types.Mixed,
     err: Schema.Types.Mixed
   }]
 });
 
-storeSchema.method('setState', function (Node, input, output, code, cb) {
+storeSchema.method('setState', function (Node, output, code, cb) {
 
   if (typeof code === 'function') {
     cb = code;
@@ -27,15 +26,16 @@ storeSchema.method('setState', function (Node, input, output, code, cb) {
     code = null;
     output = null;
   }
-  this.states.push(this.prepareState(Node, input, output, code));
+  this.states.push(this.prepareState(Node, output, code));
   this.save(err => err ? this.setErrorState(err, cb(err, this)) : cb(err, this));
 });
 
 storeSchema.method('getState', function () {
-  return this.states[this.states.length - 1];
+  let index = this.states.length - 1;
+  return (index >= 0) ? this.states[index] : null;
 });
 
-storeSchema.method('prepareState', (Node, input, output, code) => {
+storeSchema.method('prepareState', (Node, output, code) => {
   return {
     node: {
       _id: Node._id,
@@ -43,7 +43,6 @@ storeSchema.method('prepareState', (Node, input, output, code) => {
       type: Node.type,
       code
     },
-    input,
     output
   }
 });

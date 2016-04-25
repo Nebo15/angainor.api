@@ -8,6 +8,7 @@ var Sandbox = require("sandbox"), s = new Sandbox();
 var ChainModel = require('../models/chain');
 var NodeModel = require('../models/node');
 var StoreModel = require('../models/store');
+var clone = require('clone');
 
 initCRUDRoutes(ChainModel, router);
 
@@ -17,13 +18,11 @@ router.post('/:id/execute', function (req, res, next) {
     if (!Chain) {
       res.sendJsonError(404, 'Chain not found')
     } else {
-      let Node = new NodeModel({type: "branch", title: "Init branch", nodes: Chain.nodes});
-      let Store = new StoreModel({chainId: Chain._id});
-      Store.states = [Store.prepareState(Node, req.body)];
-
-      async.waterfall(
-        wrapNodes(Node.nodes, Store), (err, result) => res.sendJson(result.getState().input)
-      );
+      initNode(Chain, (Node, Store) => {
+        async.waterfall(
+          wrapNodes(Node.nodes, Store), (err, result) => res.sendJson(result.getState().output)
+        )
+      });
     }
   });
 
@@ -32,16 +31,15 @@ router.post('/:id/execute', function (req, res, next) {
       case 'code':
         let func = Node.trusted ? runNativeCode : runCodeInSandbox;
 
-
-        func(Node.code, Store.getState().input, (err, output, code) => {
-          Store.setState(Node, Store.getState().input, output, code, (err, state) => {
+        func(Node.code, Store.getState().output, (err, output, code) => {
+          Store.setState(Node, output, code, (err, state) => {
             err ? handleError(err) : callback(err, state);
           });
         });
         break;
 
       case 'branch':
-        Store.setState(Node, Store.getState().input, (err) => {
+        Store.setState(Node, Store.getState().output, (err) => {
             err ? handleError(err) : async.waterfall(
               wrapNodes(Node.nodes, Store), (err, result) => callback(err, result)
             );
@@ -50,6 +48,13 @@ router.post('/:id/execute', function (req, res, next) {
         break;
     }
   }
+
+  let initNode = (Chain, cb) => {
+    let Node = new NodeModel({type: "branch", title: "Init branch", nodes: Chain.nodes});
+    let Store = new StoreModel({chainId: Chain._id});
+    Store.states.push(Store.prepareState(Node, req.body));
+    cb(Node, Store);
+  };
 
   function handleError(err) {
     res.sendJsonError(422, err.message, err);
