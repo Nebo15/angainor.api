@@ -52,8 +52,9 @@ router.post('/:id/execute', function (req, res, next) {
   let initChain = (Chain, cb) => {
     let Node = new NodeModel({type: "branch", title: "Init branch", nodes: Chain.nodes});
     let Store = new StoreModel({chainId: Chain._id});
-    Store.states.push(Store.prepareState(Node, req.body));
-    cb(Node, Store);
+    Store.setState(Node, req.body, (err, Store) => {
+      err ? handleError(err) : cb(Node, Store);
+    });
   };
 
   let handleError = err => {

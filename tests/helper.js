@@ -3,7 +3,7 @@ var request = require('supertest');
 export default class Helper {
 
   constructor() {
-    this.baseUrl = 'http://localhost:3333'
+    this.baseUrl = 'http://localhost:3333';
     this.nodeData = {
       title: 'Test title node',
       description: 'Test desc node',
