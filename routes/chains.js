@@ -9,6 +9,7 @@ var ChainModel = require('../models/chain');
 var NodeModel = require('../models/node');
 var StoreModel = require('../models/store');
 var clone = require('clone');
+var http = require('http');
 
 initCRUDRoutes(ChainModel, router);
 
@@ -36,6 +37,46 @@ router.post('/:id/execute', function (req, res, next) {
             err ? handleError(err) : callback(err, state);
           });
         });
+        break;
+      
+      case 'http':
+
+
+        var options = {
+          hostname: 'gandalf-api.nebo15.com',
+          port: 80,
+          path: '/',
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        };
+
+        var req = http.request(options, (res) => {
+          console.log(`STATUS: ${res.statusCode}`);
+          console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            console.log(`BODY: ${chunk}`);
+
+            Store.setState(Node, chunk, (err, state) => {
+              err ? handleError(err) : callback(err, state);
+            });
+          });
+          res.on('end', () => {
+            console.log('No more data in response.');
+
+          })
+        });
+
+        req.on('error', (err) => {
+          console.log(`problem with request: ${e.message}`);
+          handleError(err)
+        });
+
+        req.write(JSON.stringify(Store.getState().output));
+        req.end();
+        
         break;
 
       case 'branch':

@@ -26,7 +26,7 @@ export default class Helper {
         type: "branch",
         nodes: [
           {type: "code", trusted: true, code: "data.parallel = 'wow'"},
-          {type: "code", trusted: true, code: "data.parallel = 'how'"},
+          {type: "http"},
           {type: "code", trusted: true, code: "data.parallel = 'now'"},
           {type: "code", trusted: true, code: "data.parallel = 'bow'"}
         ]
