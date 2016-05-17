@@ -28,59 +28,44 @@ router.post('/:id/execute', function (req, res, next) {
   });
 
   function executeNode(Node, Store, callback) {
+    let input = Store.getState().output;
     switch (Node.type) {
+
       case 'code':
         let func = Node.trusted ? runNativeCode : runCodeInSandbox;
 
-        func(Node.code, Store.getState().output, (err, output, code) => {
+        func(Node.code, input, (err, output, code) => {
           Store.setState(Node, output, code, (err, state) => {
             err ? handleError(err) : callback(err, state);
           });
         });
         break;
-      
+
       case 'http':
-
-
-        var options = {
-          hostname: 'gandalf-api.nebo15.com',
-          port: 80,
-          path: '/',
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        };
-
-        var req = http.request(options, (res) => {
-          console.log(`STATUS: ${res.statusCode}`);
-          console.log(`HEADERS: ${JSON.stringify(res.headers)}`);
+        let req = http.request(Node.httpOptions, (res) => {
+          let body = [];
           res.setEncoding('utf8');
           res.on('data', (chunk) => {
-            console.log(`BODY: ${chunk}`);
-
-            Store.setState(Node, chunk, (err, state) => {
-              err ? handleError(err) : callback(err, state);
-            });
+            body.push(chunk);
           });
           res.on('end', () => {
-            console.log('No more data in response.');
-
+            input.httpResponses ? input.httpResponses.push(body.join()) : input.httpResponses = [body.join()];
+            Store.setState(Node, input, (err, state) => {
+              err ? handleError(err) : callback(err, state);
+            });
           })
         });
 
         req.on('error', (err) => {
-          console.log(`problem with request: ${e.message}`);
           handleError(err)
         });
-
-        req.write(JSON.stringify(Store.getState().output));
+        req.write(JSON.stringify(input));
         req.end();
-        
+
         break;
 
       case 'branch':
-        Store.setState(Node, Store.getState().output, (err) => {
+        Store.setState(Node, input, (err) => {
             err ? handleError(err) : async.waterfall(
               wrapNodes(Node.nodes, Store), (err, result) => callback(err, result)
             );

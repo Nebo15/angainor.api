@@ -62,15 +62,14 @@ describe('Chains', () => {
       var id = res.body.data._id;
       request(Helper.baseUrl)
         .post('/chains/' + id + '/execute')
-        .send({amount: 100})
+        .send({amount: 100, borrowers_phone_verification: "okay", "contact_person_phone_verification": "go"})
         .end((err, res) => {
           Helper.assertResponseFields(res, 200);
           res.body.data.should.have.properties({
             'amount': 105,
             'branch': 'first',
             'lunch': 'second',
-            'final': 'finish',
-            'parallel': 'bow'
+            'final': 'finish'
           });
           done();
         });

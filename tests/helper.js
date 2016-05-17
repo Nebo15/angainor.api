@@ -16,21 +16,28 @@ export default class Helper {
       var node1 = {type: "code", trusted: true, code: "data.amount += 10"};
       var node2 = {type: "code", trusted: true, code: "data.amount -= 5"};
       var node3 = {
+        type: "branch",
+        nodes: [
+          {type: "code", trusted: true, code: "data.property = true"},
+          {type: "code", trusted: true, code: "data.employment = false"},
+          {type: "code", trusted: true, code: "data.internal_credit_history = 'nice'"},
+          {
+            type: "http",
+            httpOptions: {
+              hostname: "gandalf.dev",
+              path: "/api/v1/tables/573b04c3a60ad659090041b7/decisions",
+              auth: "admin:admin"
+            }
+          }
+        ]
+      };
+      var node4 = {
         type: "branch", nodes: [
           {type: "code", trusted: true, code: "data.branch = 'first'"},
           {type: "code", trusted: true, code: "data.lunch = 'second'"}
         ]
       };
-      var node4 = {type: "code", trusted: true, code: "data.final = 'finish'"};
-      var node5 = {
-        type: "branch",
-        nodes: [
-          {type: "code", trusted: true, code: "data.parallel = 'wow'"},
-          {type: "http"},
-          {type: "code", trusted: true, code: "data.parallel = 'now'"},
-          {type: "code", trusted: true, code: "data.parallel = 'bow'"}
-        ]
-      };
+      var node5 = {type: "code", trusted: true, code: "data.final = 'finish'"};
 
       this.chainData = {
         title: "Simple chain",
@@ -38,9 +45,9 @@ export default class Helper {
         nodes: [
           node1,
           node2,
-          node5,
           node3,
-          node4
+          node4,
+          node5
         ]
       }
     }

@@ -8,7 +8,8 @@ var storeSchema = new Schema({
       _id: Schema.Types.ObjectId,
       title: String,
       type: {type: String},
-      code: Schema.Types.Mixed
+      code: Schema.Types.Mixed,
+      httpOptions: Schema.Types.Mixed
     },
     output: Schema.Types.Mixed,
     err: Schema.Types.Mixed
@@ -36,13 +37,21 @@ storeSchema.method('getState', function () {
 });
 
 storeSchema.method('prepareState', (Node, output, code) => {
+  let data = {
+    _id: Node._id,
+    title: Node.title,
+    type: Node.type
+  };
+  switch (Node.type) {
+    case 'code':
+      data.code = code;
+      break;
+    case 'http':
+      data.httpOptions = Node.httpOptions;
+      break;
+  }
   return {
-    node: {
-      _id: Node._id,
-      title: Node.title,
-      type: Node.type,
-      code
-    },
+    node: data,
     output
   }
 });
