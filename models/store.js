@@ -3,13 +3,15 @@ var Schema = mongoose.Schema;
 
 var storeSchema = new Schema({
   chainId: Schema.Types.ObjectId,
+  status: {type: String, enum: ['created', 'processing', 'completed', 'failed'], default: 'created'},
   states: [{
     node: {
       _id: Schema.Types.ObjectId,
       title: String,
       type: {type: String},
       code: Schema.Types.Mixed,
-      httpOptions: Schema.Types.Mixed
+      httpOptions: Schema.Types.Mixed,
+      httpErrors: Schema.Types.Mixed
     },
     output: Schema.Types.Mixed,
     err: Schema.Types.Mixed

@@ -21,13 +21,17 @@ router.post('/:id/execute', function (req, res, next) {
     } else {
       initChain(Chain, (Node, Store) => {
         async.waterfall(
-          wrapNodes(Node.nodes, Store), (err, result) => res.sendJson(result.getState().output)
+          wrapNodes(Node.nodes, Store), (err, Store) => {
+            Store.status = 'completed';
+            Store.save();
+            res.sendJson(Store.getState().output)
+          }
         )
       });
     }
   });
 
-  function executeNode(Node, Store, callback) {
+  let executeNode = (Node, Store, callback) => {
     let input = Store.getState().output;
     switch (Node.type) {
 
@@ -51,14 +55,19 @@ router.post('/:id/execute', function (req, res, next) {
           res.on('end', () => {
             input.httpResponses ? input.httpResponses.push(body.join()) : input.httpResponses = [body.join()];
             Store.setState(Node, input, (err, state) => {
-              err ? handleError(err) : callback(err, state);
+              err ? handleError(err, Store) : callback(err, state);
             });
           })
         });
 
         req.on('error', (err) => {
-          handleError(err)
+          input.httpResponses ? input.httpErrors.push(err) : input.httpErrors = [err];
+          Store.status = 'failed';
+          Store.setState(Node, input, () => {
+            handleError(err);
+          });
         });
+
         req.write(JSON.stringify(input));
         req.end();
 
@@ -66,24 +75,29 @@ router.post('/:id/execute', function (req, res, next) {
 
       case 'branch':
         Store.setState(Node, input, (err) => {
-            err ? handleError(err) : async.waterfall(
+            err ? handleError(err, Store) : async.waterfall(
               wrapNodes(Node.nodes, Store), (err, result) => callback(err, result)
             );
           }
         );
         break;
     }
-  }
+  };
 
   let initChain = (Chain, cb) => {
     let Node = new NodeModel({type: "branch", title: "Init branch", nodes: Chain.nodes});
     let Store = new StoreModel({chainId: Chain._id});
+    Store.status = 'processing';
     Store.setState(Node, req.body, (err, Store) => {
-      err ? handleError(err) : cb(Node, Store);
+      err ? handleError(err, Store) : cb(Node, Store);
     });
   };
 
-  let handleError = err => {
+  let handleError = (err, Store) => {
+    if(typeof Store != 'undefined'){
+      Store.status = 'failed';
+      Store.save();
+    }
     res.sendJsonError(422, err.message, err);
   };
 
