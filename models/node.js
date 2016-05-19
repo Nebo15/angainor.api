@@ -8,6 +8,7 @@ Node.add({
   type: {type: String, enum: ['code', 'http', 'branch']},
   trusted: {type: Boolean, default: false},
   code: {type: String, min: 2, max: 1024},
+  condition: {type: String, min: 2, max: 1024},
   httpOptions: {
     hostname: {type: String, min: 2, max: 1024},
     path: {type: String, min: 1, max: 1024},

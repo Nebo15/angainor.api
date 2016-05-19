@@ -31,18 +31,18 @@ router.post('/:id/execute', function (req, res, next) {
     }
   });
 
-  let executeNode = (Node, Store, callback) => {
+  let executeNode = (Node, Store, cb) => {
     let input = Store.getState().output;
     switch (Node.type) {
 
       case 'code':
-        let func = Node.trusted ? runNativeCode : runCodeInSandbox;
 
-        func(Node.code, input, (err, output, code) => {
+        executeCode(Node.code, Node, input, (err, output, code) =>
           Store.setState(Node, output, code, (err, state) => {
-            err ? handleError(err) : callback(err, state);
-          });
-        });
+            err ? handleError(err) : cb(err, state);
+          })
+        );
+
         break;
 
       case 'http':
@@ -55,7 +55,7 @@ router.post('/:id/execute', function (req, res, next) {
           res.on('end', () => {
             input.httpResponses ? input.httpResponses.push(body.join()) : input.httpResponses = [body.join()];
             Store.setState(Node, input, (err, state) => {
-              err ? handleError(err, Store) : callback(err, state);
+              err ? handleError(err, Store) : cb(err, state);
             });
           })
         });
@@ -74,12 +74,20 @@ router.post('/:id/execute', function (req, res, next) {
         break;
 
       case 'branch':
-        Store.setState(Node, input, (err) => {
-            err ? handleError(err, Store) : async.waterfall(
-              wrapNodes(Node.nodes, Store), (err, result) => callback(err, result)
-            );
-          }
-        );
+        if (Node.condition) {
+          executeCode(Node.condition, Node, input, (err, output, code) =>
+            Store.setState(Node, output, code, (err, state) => {
+              err ? handleError(err) : cb(err, state);
+            }));
+        } else {
+          Store.setState(Node, input, (err) => {
+              err ? handleError(err, Store) : async.waterfall(
+                wrapNodes(Node.nodes, Store), (err, result) => cb(err, result)
+              );
+            }
+          );
+        }
+
         break;
     }
   };
@@ -94,21 +102,26 @@ router.post('/:id/execute', function (req, res, next) {
   };
 
   let handleError = (err, Store) => {
-    if(typeof Store != 'undefined'){
+    if (typeof Store != 'undefined') {
       Store.status = 'failed';
       Store.save();
     }
     res.sendJsonError(422, err.message, err);
   };
 
-  let runNativeCode = (code, data, callback) => {
-    eval(code);
-    callback(null, data, code);
+  let executeCode = (code, Node, input, cb) => {
+    let func = Node.trusted ? runNativeCode : runCodeInSandbox;
+    func(code, input, (err, output, code) => cb(err, output, code));
   };
 
-  let runCodeInSandbox = (code, data, callback) => {
+  let runNativeCode = (code, data, cb) => {
+    eval(code);
+    cb(null, data, code);
+  };
+
+  let runCodeInSandbox = (code, data, cb) => {
     code = prepareCodeForSandbox(code, data);
-    s.run(code, output => callback(null, (output.console[0]), code));
+    s.run(code, output => cb(null, (output.console[0]), code));
   };
 
   let prepareCodeForSandbox = (code, data) => {
